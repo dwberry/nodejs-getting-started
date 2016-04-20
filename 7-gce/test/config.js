@@ -20,5 +20,5 @@ module.exports = {
   path: path.resolve(path.join(__dirname, '../')),
   cmd: 'node',
   args: ['app.js'],
-  msg: 'No books found.'
+  msg: 'Bookshelf'
 };

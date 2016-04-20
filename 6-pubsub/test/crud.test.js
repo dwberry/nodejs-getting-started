@@ -14,9 +14,8 @@
 'use strict';
 
 var assert = require('assert');
-var request = require('supertest');
-var proxyquire = require('proxyquire').noPreserveCache();
-var stubs = {};
+var config = require('./config');
+var utils = require('../../test/utils');
 
 describe('crud.js', function () {
   describe('/books', function () {
@@ -24,7 +23,7 @@ describe('crud.js', function () {
 
     // setup a book
     before(function (done) {
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .post('/api/books')
         .send({ title: 'my book' })
         .expect(200)
@@ -38,7 +37,7 @@ describe('crud.js', function () {
 
     it('should show a list of books', function (done) {
       var expected = '<div class="media-body"><h4>my book</h4><p></p></div>';
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books')
         .expect(200)
         .expect(function (response) {
@@ -48,7 +47,7 @@ describe('crud.js', function () {
     });
 
     it('should handle error', function (done) {
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books')
         .query({ pageToken: 'badrequest' })
         .expect(500)
@@ -58,7 +57,7 @@ describe('crud.js', function () {
     // delete the book
     after(function (done) {
       if (id) {
-        request(proxyquire('../app', stubs))
+        utils.getRequest(config)
           .delete('/api/books/' + id)
           .expect(200)
           .end(done);
@@ -72,7 +71,7 @@ describe('crud.js', function () {
     var id;
 
     it('should post to add book form', function (done) {
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .post('/books/add')
         .field('title', 'my book')
         .expect(302)
@@ -90,7 +89,7 @@ describe('crud.js', function () {
     });
 
     it('should show add book form', function (done) {
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books/add')
         .expect(200)
         .expect(function (response) {
@@ -102,7 +101,7 @@ describe('crud.js', function () {
     // delete the book
     after(function (done) {
       if (id) {
-        request(proxyquire('../app', stubs))
+        utils.getRequest(config)
           .delete('/api/books/' + id)
           .expect(200)
           .end(done);
@@ -117,7 +116,7 @@ describe('crud.js', function () {
 
     // setup a book
     before(function (done) {
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .post('/api/books')
         .send({ title: 'my book' })
         .expect(200)
@@ -131,7 +130,7 @@ describe('crud.js', function () {
 
     it('should update a book', function (done) {
       var expected = 'Redirecting to /books/' + id;
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .post('/books/' + id + '/edit')
         .field('title', 'my other book')
         .expect(302)
@@ -144,7 +143,7 @@ describe('crud.js', function () {
     it('should show edit book form', function (done) {
       var expected = '<input type="text" name="title" id="title" ' +
                      'value="my other book" class="form-control">';
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books/' + id + '/edit')
         .expect(200)
         .expect(function (response) {
@@ -155,7 +154,7 @@ describe('crud.js', function () {
 
     it('should show a book', function (done) {
       var expected = '<h4>my other book&nbsp;<small></small></h4>';
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books/' + id)
         .expect(200)
         .expect(function (response) {
@@ -166,7 +165,7 @@ describe('crud.js', function () {
 
     it('should delete a book', function (done) {
       var expected = 'Redirecting to /books';
-      request(proxyquire('../app', stubs))
+      utils.getRequest(config)
         .get('/books/' + id + '/delete')
         .expect(302)
         .expect(function (response) {
@@ -179,7 +178,7 @@ describe('crud.js', function () {
     // clean up if necessary
     after(function (done) {
       if (id) {
-        request(proxyquire('../app', stubs))
+        utils.getRequest(config)
           .delete('/api/books/' + id)
           .expect(200)
           .end(done);

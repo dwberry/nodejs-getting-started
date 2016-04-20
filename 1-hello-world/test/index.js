@@ -15,11 +15,15 @@
 
 var config = require('./config');
 var utils = require('../../test/utils');
+var proxyquire = require('proxyquire').noPreserveCache();
+var stubs = {};
 
 describe(config.test + '/', function () {
-  it('should install dependencies', function (done) {
-    this.timeout(60 * 1000); // Allow 1 minute to test installation
-    utils.testInstallation(config, done);
-  });
-  require('./app.test');
+  if (!process.env.E2E_TESTS) {
+    it('should install dependencies', function (done) {
+      this.timeout(60 * 1000); // Allow 1 minute to test installation
+      utils.testInstallation(config, done);
+    });
+  }
+  proxyquire('./app.test', stubs);
 });

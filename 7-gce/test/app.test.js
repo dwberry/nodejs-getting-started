@@ -15,18 +15,17 @@
 
 var assert = require('assert');
 var config = require('./config');
-var request = require('supertest');
 var utils = require('../../test/utils');
-var proxyquire = require('proxyquire').noPreserveCache();
-var stubs = {};
 
 describe('app.js', function () {
-  it('should run', function (done) {
-    utils.testLocalApp(config, done);
-  });
+  if (!process.env.E2E_TESTS) {
+    it('should run', function (done) {
+      utils.testLocalApp(config, done);
+    });
+  }
 
   it('should redirect / to /books', function (done) {
-    request(proxyquire('../app', stubs))
+    utils.getRequest(config)
       .get('/')
       .expect(302)
       .expect(function (response) {

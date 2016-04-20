@@ -14,15 +14,14 @@
 'use strict';
 
 var assert = require('assert');
-var request = require('supertest');
-var proxyquire = require('proxyquire').noPreserveCache();
-var stubs = {};
+var config = require('./config');
+var utils = require('../../test/utils');
 
 describe('api.js', function () {
   var id;
 
   it('should create a book', function (done) {
-    request(proxyquire('../app', stubs))
+    utils.getRequest(config)
       .post('/api/books')
       .send({ title: 'beep' })
       .expect(200)
@@ -35,7 +34,7 @@ describe('api.js', function () {
   });
 
   it('should list books', function (done) {
-    request(proxyquire('../app', stubs))
+    utils.getRequest(config)
       .get('/api/books')
       .expect(200)
       .expect(function (response) {
@@ -46,7 +45,7 @@ describe('api.js', function () {
   });
 
   it('should delete a book', function (done) {
-    request(proxyquire('../app', stubs))
+    utils.getRequest(config)
       .delete('/api/books/' + id)
       .expect(200)
       .expect(function (response) {

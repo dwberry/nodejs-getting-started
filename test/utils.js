@@ -13,33 +13,71 @@
 
 'use strict';
 
-var spawn = require('child_process').spawn;
+var fs = require('fs');
+var path = require('path');
 var request = require('request');
+var spawn = require('child_process').spawn;
+var supertest = require('supertest');
+var proxyquire = require('proxyquire').noPreserveCache();
+
+var cwd = process.cwd();
+var projectId = process.env.GCLOUD_PROJECT;
+
+function getPath (dir) {
+  return path.join(cwd, dir);
+}
+
+// Retry the request using exponential backoff up to a maximum number of tries.
+function makeRequest (url, numTry, maxTries, cb) {
+  request(url, function (err, res, body) {
+    if (err) {
+      if (numTry >= maxTries) {
+        return cb(err);
+      }
+      setTimeout(function () {
+        makeRequest(url, numTry + 1, maxTries, cb);
+      }, 500 * Math.pow(numTry, 2));
+    } else {
+      cb(null, res, body);
+    }
+  });
+}
 
 // Send a request to the given url and test that the response body has the
 // expected value
 function testRequest (url, config, cb) {
-  request(url, function (err, res, body) {
+  // Try up to 8 times
+  makeRequest(url, 1, 8, function (err, res, body) {
     if (err) {
       // Request error
       return cb(err);
-    } else {
-      if (body && body.indexOf(config.msg) !== -1 &&
-            (res.statusCode === 200 || res.statusCode === config.code)) {
-        // Success
-        return cb(null, true);
-      } else {
-        // Short-circuit app test
-        var message = config.test + ': failed verification!\n' +
-                      'Expected: ' + config.msg + '\n' +
-                      'Actual: ' + body;
-
-        // Response body did not match expected
-        return cb(new Error(message));
-      }
     }
+    if (body && body.indexOf(config.msg) !== -1 &&
+          (res.statusCode === 200 || res.statusCode === config.code) &&
+          (!config.testStr || config.testStr.test(body))) {
+      // Success
+      return cb();
+    }
+    // Short-circuit app test
+    var message = config.dir + ': failed verification!\n' +
+                  'Expected: ' + config.msg + '\n' +
+                  'Actual: ' + body;
+
+    // Response body did not match expected
+    cb(new Error(message));
   });
 }
+
+function getUrl (config) {
+  return 'http://' + config.test + '-dot-' + projectId + '.appspot.com';
+}
+
+exports.getRequest = function (config) {
+  if (process.env.E2E_TESTS) {
+    return supertest(getUrl(config));
+  }
+  return supertest(proxyquire(path.join(__dirname, '../' + config.test, 'app'), {}));
+};
 
 exports.testInstallation = function testInstallation (config, done) {
   // Keep track off whether "done" has been called yet
@@ -112,5 +150,132 @@ exports.testLocalApp = function testLocalApp (config, done) {
       calledDone = true;
       done(err);
     }
+  }
+};
+
+exports.testDeploy = function (config, done) {
+  // Keep track off whether "done" has been called yet
+  var calledDone = false;
+  // Keep track off whether the logs have fully flushed
+  var logFinished = false;
+
+  // Manually set # of instances to 1
+  // changeScaling(config.test);
+
+  var _cwd = getPath(config.test);
+
+  var args = [
+    'preview',
+    'app',
+    'deploy',
+    'app.yaml',
+    // Skip prompt
+    '-q',
+    '--project',
+    projectId,
+    // Deploy over existing version so we don't have to clean up
+    '--version',
+    config.test,
+    config.promote ? '--promote' : '--no-promote',
+    // Build locally, much faster
+    // '--docker-build',
+    // 'local',
+    '--verbosity',
+    'debug'
+  ];
+
+  var logFile = path.join(cwd, config.test + '-' + new Date().getTime()) + '.txt';
+  var logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+  // Don't use "npm run deploy" because we need extra flags
+  var proc = spawn('gcloud', args, {
+    cwd: _cwd
+  });
+
+  console.log(config.test + ': Deploying app...');
+  // Exit helper so we don't call "done" more than once
+  function finish (err) {
+    if (!calledDone) {
+      calledDone = true;
+      if (err) {
+        return done(err);
+      }
+      if (logFinished) {
+        return done();
+      }
+      var intervalId = setInterval(function () {
+        if (logFinished) {
+          clearInterval(intervalId);
+          done();
+        }
+      }, 1000);
+    }
+  }
+
+  var numEnded = 0;
+
+  function finishLogs () {
+    numEnded++;
+    if (numEnded === 2) {
+      logStream.end();
+      console.log(config.test + ': Saved logfile: ' + logFile);
+    }
+  }
+
+  try {
+    logStream.on('finish', function () {
+      if (!logFinished) {
+        logFinished = true;
+      }
+    });
+
+    proc.stdout.pipe(logStream, { end: false });
+    proc.stderr.pipe(logStream, { end: false });
+
+    proc.stdout.on('end', finishLogs);
+    proc.stderr.on('end', finishLogs);
+
+    // This is called if the process fails to start. "error" event may or may
+    // not be fired in addition to the "exit" event.
+    proc.on('error', finish);
+
+    // Process has completed
+    proc.on('exit', function (code, signal) {
+      if (signal === 'SIGKILL') {
+        console.log(config.test + ': SIGKILL received!');
+      }
+      if (code !== 0 && signal !== 'SIGKILL') {
+        // Deployment failed
+        console.log(config.test + ': ERROR', code, signal);
+
+        // Pass error as second argument so we don't short-circuit the
+        // parallel tasks
+        return finish(new Error(config.test + ': failed to deploy!'));
+      } else {
+        // Deployment succeeded
+        console.log(config.test + ': App deployed...');
+
+        // Give apps time to start
+        setTimeout(function () {
+          // Test versioned url of "default" module
+          var demoUrl = 'http://' + config.test + '-dot-' + projectId +
+            '.appspot.com';
+
+          // Test that app is running successfully
+          console.log(config.test + ': Testing ' + demoUrl);
+          testRequest(demoUrl, config, function (err) {
+            if (!err) {
+              console.log(config.test + ': Success!');
+            }
+            finish(err);
+          });
+        }, 5000);
+      }
+    });
+  } catch (err) {
+    if (proc) {
+      proc.kill('SIGKILL');
+    }
+    finish(err);
   }
 };
