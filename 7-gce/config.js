@@ -42,7 +42,7 @@ nconf
   // 4. Defaults
   .defaults({
     // Typically you will create a bucket with the same name as your project ID.
-    CLOUD_BUCKET: '',
+    CLOUD_BUCKET: 'imagebucketschoolwebdataapi',
 
     // dataBackend can be 'datastore', 'cloudsql', or 'mongodb'. Be sure to
     // configure the appropriate settings for each storage engine below.
@@ -51,7 +51,7 @@ nconf
     DATA_BACKEND: 'datastore',
 
     // This is the id of your project in the Google Cloud Developers Console.
-    GCLOUD_PROJECT: '',
+    GCLOUD_PROJECT: 'SchoolWebDataAPI',
 
     // Connection url for the Memcache instance used to store session data
     MEMCACHE_URL: '127.0.0.1:11211',
@@ -65,9 +65,9 @@ nconf
     MYSQL_PASSWORD: '',
     MYSQL_HOST: '',
 
-    OAUTH2_CLIENT_ID: '',
-    OAUTH2_CLIENT_SECRET: '',
-    OAUTH2_CALLBACK: 'http://localhost:8080/auth/google/callback',
+    OAUTH2_CLIENT_ID: '591105330788-o14jat3iaornk70h4aa0oehkhcp1iu1u.apps.googleusercontent.com',
+    OAUTH2_CLIENT_SECRET: 'VTixtrOlWnkY9oiOcXD0pIcB',
+    OAUTH2_CALLBACK: 'https://8080-dot-1962844-dot-devshell.appspot.com/oauth2callback',
 
     // Port the HTTP server
     PORT: 8080,
