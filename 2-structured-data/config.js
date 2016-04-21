@@ -43,7 +43,7 @@ nconf
     DATA_BACKEND: 'datastore',
 
     // This is the id of your project in the Google Cloud Developers Console.
-    GCLOUD_PROJECT: 'SchoolWe',
+    GCLOUD_PROJECT: 'SchoolWebDataAPI',
 
     // MongoDB connection string
     // https://docs.mongodb.org/manual/reference/connection-string/
