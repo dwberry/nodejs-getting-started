@@ -51,7 +51,7 @@ nconf
     DATA_BACKEND: 'datastore',
 
     // This is the id of your project in the Google Cloud Developers Console.
-    GCLOUD_PROJECT: 'SchoolWebDataAPI',
+    GCLOUD_PROJECT: 'schoolwebdataapi',
 
     // Connection url for the Memcache instance used to store session data
     MEMCACHE_URL: '127.0.0.1:11211',
